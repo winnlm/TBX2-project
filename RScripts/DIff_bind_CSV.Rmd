@@ -1,0 +1,184 @@
+---
+title: "TBX_DIffBind_csv"
+output: html_document
+date: "2024-07-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## library
+```{r echo = FALSE}
+library(DiffBind)
+install.packages("callr")
+library(callr)
+install.packages("BiocManager")
+BiocManager::install("BiocParallel")
+library(BiocParallel)
+library(DESeq2)
+library(edgeR)
+register(MulticoreParam(workers = 64))
+library(rtracklayer)
+
+ 
+```
+## CSV h3k4me
+
+```{r, echo=FALSE}
+Masdir <- "/research/labs/experpath/maia"
+IGG <- paste0(Masdir, "/m315695/CUTandRUN/trimmed_batch2")
+MW <- paste0(Masdir, "/m315695/CUTandRUN/Trim_Batch4_AMY")
+MWAMY <- paste0(Masdir, "/m315695/CUTandRUN/AVG_AMY")
+
+```
+
+```{r}
+H3k4me3 <- data.frame(
+  SampleID=c("mCh_H3K4me3-1","mCh_H3K4me3-2","mCh_H3K4me3-3",
+             "TBX2_H3K4me3-1","TBX2_H3K4me3-2","TBX2_H3K4me3-3"),
+  Tissue=c("mCh_H3K4me3","mCh_H3K4me3","mCh_H3K4me3",
+           "TBX2_H3K4me3","TBX2_H3K4me3","TBX2_H3K4me3"),
+  Condition=c("WT","WT","WT",
+              "OE","OE","OE"),
+  Replicate=c(1,2,3,
+              1,2,3),
+  bamReads=c(paste0(MW,"/AMY01_NoDup.bam"),
+             paste0(MW,"/AMY07_NoDup.bam"),
+             paste0(MW,"/AMY13_NoDup.bam"),
+             paste0(MW,"/AMY04_NoDup.bam"),
+             paste0(MW,"/AMY10_NoDup.bam"),
+             paste0(MW,"/AMY16_NoDup.bam")),
+  # controlID=c("IGGC","IGGC","IGGC",
+  #             "IGGC","IGGC","IGGC"),
+  # bamControl=c(paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam")),
+  Peaks=c(paste0(MWAMY,"/mCh_H3K4me3_comp.relaxed.bed"),
+          paste0(MWAMY,"/mCh_H3K4me3_comp.relaxed.bed"),
+          paste0(MWAMY,"/mCh_H3K4me3_comp.relaxed.bed"),
+          paste0(MWAMY,"/TBX2_H3K4me3_comp.relaxed.bed"),
+          paste0(MWAMY,"/TBX2_H3K4me3_comp.relaxed.bed"),
+          paste0(MWAMY,"/TBX2_H3K4me3_comp.relaxed.bed")),
+  PeakCaller=c("bed","bed","bed",
+               "bed","bed","bed")
+)
+
+```
+
+
+```{r}
+H3k4me3v <- dba(sampleSheet = H3k4me3)
+H3k4me3vc <- dba.count(H3k4me3v)
+H3k4me3vn <- dba.normalize(H3k4me3vc,method=DBA_EDGER, normalize=DBA_NORM_RLE, background = FALSE)
+# H3k4me3vcc <- dba.contrast(H3k4me3vn,
+#                           reorderMeta = list(Condition="OE"))
+# H3k4me3vcc <- dba.contrast(H3k4me3vn, categories = DBA_CONDITION, minMembers = 2)
+H3k4me3v <- dba.analyze(H3k4me3vn, method=DBA_EDGER)
+```
+## mplot
+
+```{r pressure, echo=FALSE}
+ dba.plotMA(H3k4me3v, method = DBA_EDGER, th = 0.05, bUsePval = TRUE)
+ dba.plotHeatmap(H3k4me3v, contrast = 1, method = DBA_EDGER, th = 0.05, bUsePval = TRUE)
+ dba.plotPCA(H3k4me3v, method=DBA_EDGER, components=3:4, th = 0.05, bUsePval = TRUE)
+ dba.plotVolcano(H3k4me3v, contrast = 1, method = DBA_EDGER, th = 0.05, bUsePval = TRUE)
+ 
+ # file = "H3k4me3ER", ext="bed"
+  H3k4me3S <-dba.report(H3k4me3v,method = DBA_EDGER,th = 0.05,bUsePval = TRUE, DataType=DBA_DATA_FRAME)
+  
+ # scores <- -10*(log10(H3k4me3S$FDR))
+  #,scores
+  sites <- cbind(H3k4me3S[,1:3])
+  
+  gainme3 <- H3k4me3S$Fold > 0
+  lossme3 <- H3k4me3S$Fold < 0
+ # H3k4me3DC.DB <- dba.report(H3k4me3v,method = DBA_EDGER,th = 0.05, bUsePval = TRUE, bAll = FALSE, bLoss = TRUE,bGain=FALSE,DataType=DBA_DATA_FRAME)
+  MWDIF = paste0(Masdir,"/m315695/DIffBind/AMYTBX2")
+ dir.create(MWDIF,recursive = TRUE)
+ 
+write.table(sites[gainme3,], file= paste0(MWDIF,"/DBsitesGainsme3.bed"), quote=FALSE, sep="\t",
+              row.names=FALSE, col.names=FALSE)
+write.table(sites[lossme3,], file= paste0(MWDIF,"/DBsitesLossme3.bed"), quote=FALSE, sep="\t",
+              row.names=FALSE, col.names=FALSE)
+ 
+
+```
+
+```{r}
+H3k27ac <- data.frame(
+  SampleID=c("mCh_H3k27ac-1","mCh_H3k27ac-2","mCh_H3k27ac-3",
+             "TBX2_H3k27ac-1","TBX2_H3k27ac-2","TBX2_H3k27ac-3"),
+  Tissue=c("mCh_H3k27ac","mCh_H3k27ac","mCh_H3k27ac",
+           "TBX2_H3k27ac","TBX2_H3k27ac","TBX2_H3k27ac"),
+  Condition=c("WT","WT","WT",
+              "OE","OE","OE"),
+  Replicate=c(1,2,3,
+              1,2,3),
+  bamReads=c(paste0(MW,"/AMY03_NoDup.bam"),
+             paste0(MW,"/AMY09_NoDup.bam"),
+             paste0(MW,"/AMY15_NoDup.bam"),
+             paste0(MW,"/AMY06_NoDup.bam"),
+             paste0(MW,"/AMY12_NoDup.bam"),
+             paste0(MW,"/AMY18_NoDup.bam")),
+  # controlID=c("IGGC","IGGC","IGGC",
+  #             "IGGC","IGGC","IGGC"),
+  # bamControl=c(paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam"),
+  #              paste0(IGG,"/AMY22_NoDup.bam")),
+  Peaks=c(paste0(MWAMY,"/mCh_H3k27ac_comp.relaxed.bed"),
+          paste0(MWAMY,"/mCh_H3k27ac_comp.relaxed.bed"),
+          paste0(MWAMY,"/mCh_H3k27ac_comp.relaxed.bed"),
+          paste0(MWAMY,"/TBX2_H3k27ac_comp.relaxed.bed"),
+          paste0(MWAMY,"/TBX2_H3k27ac_comp.relaxed.bed"),
+          paste0(MWAMY,"/TBX2_H3k27ac_comp.relaxed.bed")),
+  PeakCaller=c("bed","bed","bed",
+               "bed","bed","bed")
+)
+
+
+```
+
+
+
+```{r}
+H3k27acv <- dba(sampleSheet = H3k27ac)
+H3k27acvc <- dba.count(H3k27acv)
+H3k27acvn <- dba.normalize(H3k27acvc,method=DBA_EDGER, normalize=DBA_NORM_RLE, background = FALSE)
+
+# H3k27acvcc <- dba.contrast(H3k27acvn, reorderMeta = list(Condition="OE"))
+# H3k4me3vcc <- dba.contrast(H3k4me3vn,
+#                           reorderMeta = list(Condition="OE"))
+
+H3k27acv <- dba.analyze(H3k27acvn, method=DBA_EDGER)
+```
+
+```{r}
+ dba.plotMA(H3k27acv, method = DBA_EDGER, th = 0.05, bUsePval = TRUE,bNormalized = TRUE)
+ dba.plotHeatmap(H3k27acv,contrast = 1, method = DBA_EDGER, th = 0.05, bUsePval = TRUE)
+ dba.plotPCA(H3k27acv, method=DBA_EDGER, components=3:4, th = 0.05, bUsePval = TRUE)
+ dba.plotVolcano(H3k27acv,contrast = 1, method = DBA_EDGER, th = 0.05, bUsePval = TRUE)
+ 
+H3k27acS <-dba.report(H3k27acv,method = DBA_EDGER,th = 0.05,bUsePval = TRUE, DataType=DBA_DATA_FRAME)
+  
+sitesac <- cbind(H3k27acS[,1:3])
+gainac3 <- H3k27acS$Fold > 0
+lossac3 <- H3k27acS$Fold < 0
+
+
+# MWDIF = paste0(Masdir,"/m315695/DIffBind/AMYTBX2")
+# dir.create(MWDIF,recursive = TRUE)
+#  
+
+write.table(sitesac[gainac3,], file= paste0(MWDIF,"/DBsitesGainsac3.bed"), quote=FALSE, sep="\t",
+              row.names=FALSE, col.names=FALSE)
+write.table(sitesac[lossac3,], file= paste0(MWDIF,"/DBsitesLossac.bed"), quote=FALSE, sep="\t",
+              row.names=FALSE, col.names=FALSE)
+```
+

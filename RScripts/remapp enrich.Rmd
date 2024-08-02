@@ -1,0 +1,207 @@
+---
+title: "remapp enrich"
+output: html_document
+date: "2024-07-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## packages and libraries
+
+```{r}
+install.packages("devtools")
+library(devtools)
+install_github("remap-cisreg/ReMapEnrich")
+library(ReMapEnrich)
+install.packages("dplyr")
+library(dplyr)
+install.packages("stringr")
+library(stringr)
+library(parallel)
+library(ggplot2)
+nCores <- detectCores() - 30
+```
+
+
+```{r}
+#DirTBX2= "/mforge/research/labs/experpath/maia/m237371/CUTandRUN/trimmed_batch2/mMEC1_EGFP_AntiTBX2.relaxed.bed"
+DirTBX2= "/mforge/research/labs/experpath/maia/m237371/CUTandRUN/trimmed_batch2/mMEC1_TBX2_EGFP_AntiFLAG.relaxed.bed"
+
+# MASDIR="/mforge/research/labs/experpath/maia/m315695/CUTandRUN/AVG_AMY"
+# MWR="/mforge/research/labs/experpath/maia/m315695"
+# DirH3K4me3TBX2=paste0(MASDIR,"/TBX2_H3K4me3_comp.relaxed.bed")
+# DirH3K4me3WT=paste0(MASDIR,"/mCh_H3K4me3_comp.relaxed.bed")
+# 
+# DirH3K27acTBX2=paste0(MASDIR,"/TBX2_H3k27ac_comp.relaxed.bed")
+# DirH3K27acWT=paste0(MASDIR,"/mCh_H3k27ac_comp.relaxed.bed")
+
+MASDIR="/mforge/research/labs/experpath/maia/m315695/DIffBind/AMYTBX2"
+MWR="/mforge/research/labs/experpath/maia/m315695"
+
+DirH3K4me3Gain=paste0(MASDIR,"/DBsitesGainsme3.bed")
+DirH3K4me3Loss=paste0(MASDIR,"/DBsitesLossme3.bed")
+
+DirH3K27acGain=paste0(MASDIR,"/DBsitesGainsac3.bed")
+DirH3K27acLoss=paste0(MASDIR,"/DBsitesLossac.bed")
+
+# MM10CATDIR=paste0(MASDIR,"/remap2022_all_macs2_mm10_v1_0.bed.gz")
+```
+## trim the bed files
+
+```{r}
+# DirH3K4me3TBX2,DirH3K4me3WT,DirH3K27acTBX2,DirH3K27acWT,
+files=c(DirTBX2)
+output_files <- list()
+for (file in files){
+
+  data <- read.table(file, header = FALSE, stringsAsFactors = FALSE)
+  selected_data <- data[, 1:3]
+
+  selected_data <- selected_data %>%
+    mutate_all(as.character) %>%
+    mutate_all(str_trim)
+
+  output_file <- paste0("cleaned_", basename(file))
+
+  write.table(selected_data, file = output_file , sep = "\t",
+              col.names = FALSE, row.names = FALSE, quote = FALSE)
+  print(paste("Output file:", output_file))
+
+  output_files <- c(output_files, output_file)
+}
+```
+
+```{r}
+# DirH3K4me3TBX2 <- paste0(MWR,"/",output_files[[1]])
+# DirH3K4me3WT <- paste0(MWR,"/",output_files[[2]])
+# DirH3K27acTBX2 <- paste0(MWR,"/",output_files[[3]])
+# DirH3K27acWT <- paste0(MWR,"/",output_files[[4]])
+ DirTBX2 <- paste0(MWR,"/",output_files[[1]])
+```
+
+##
+```{r }
+#the files moved
+
+H3K4me3Gain <- bedToGranges(DirH3K4me3Gain)
+H3K4me3Loss <- bedToGranges(DirH3K4me3Loss)
+H3K27acGain <- bedToGranges(DirH3K27acGain)
+H3K27acLoss <- bedToGranges(DirH3K27acLoss)
+TBX2 <- bedToGranges(DirTBX2)
+# MM10CAT <- bedToGranges(system.file("extdata",
+#                                     "sample.bed",
+#                                    package = "ReMapEnrich"))
+                                
+```
+
+
+```{r}
+#create loc lib
+MM10.dir <- paste0(MWR,"/ReMapEnrich_MM10")
+dir.create(MM10.dir, showWarnings = FALSE, recursive = TRUE)
+
+# Use the function DowloadRemapCatalog
+# dumb code doesn't work so the they prolly only allow mouse genome
+remapCatalog2022MM10 <- paste0(MM10.dir,"/remap2022_nr_macs2_mm10_v1_0.bed.gz")
+
+# Load the ReMap catalogue and convert it to Genomic Ranges
+remapCatalog <- bedToGranges(remapCatalog2022MM10) 
+```
+
+
+```{r}
+enrichment_H3K4me3Gain.df <- enrichment(H3K4me3Gain, remapCatalog, byChrom = FALSE,  nCores = nCores)
+enrichment_H3K4me3Loss.df <- enrichment(H3K4me3Loss, remapCatalog, byChrom = FALSE, nCores = nCores)
+
+enrichment_H3K27acGain.df <- enrichment(H3K27acGain, remapCatalog, byChrom = FALSE, nCores = nCores)
+enrichment_H3K27acLoss.df <- enrichment(H3K27acLoss, remapCatalog, byChrom = FALSE, nCores = nCores)
+
+enrichment_TBX2.df <- enrichment(TBX2, remapCatalog, byChrom = FALSE, nCores = nCores)
+```
+
+
+```{r pressure, echo=FALSE}
+
+# output_file <- "enrichment_plot.png"
+# png(filename = output_file, width = 1500, height = 800)
+# 
+# old_par <- par()
+# options(repr.plot.width=10, repr.plot.height=7)
+# par(mar = c(5, 25, 4, 2), las = .5)  # (bottom, left, top, right), las = 1 for horizontal text
+
+dirRM = paste0(MWR, "/RemapEnrich/TBX2")
+pdf(paste0(dirRM,"/enrichment_H3K4me3Gain.pdf"))
+enrichmentDotPlot(enrichment_H3K4me3Gain.df)
+dev.off()
+
+pdf(paste0(dirRM,"/enrichment_H3K4me3Loss.pdf"))
+enrichmentDotPlot(enrichment_H3K4me3Loss.df)
+dev.off()
+
+pdf(paste0(dirRM,"/enrichment_H3K27acGain.pdf"))
+enrichmentDotPlot(enrichment_H3K27acGain.df)
+dev.off()
+
+pdf(paste0(dirRM,"/enrichment_H3K27acLoss.pdf"))
+enrichmentDotPlot(enrichment_H3K27acLoss.df)
+dev.off()
+
+pdf(paste0(dirRM,"/enrichment_TBX2.pdf"))
+enrichmentDotPlot(enrichment_TBX2.df) 
+dev.off()
+
+# RE <-paste0(MWR,"/RemapEnrich/TBX2")
+# dir.create(RE, recursive = TRUE)
+# class(tbx2me3$plot)
+# ggsave(filename =  file.path(RE,"plot_H3K4me3TBX2.png"), plot = tbx2me3, width = 8, height = 6)
+# ggsave(filename =  file.path(RE,"plot_H3K4me3WT.png"), plot = wtme3, width = 8, height = 6)
+# ggsave(filename =  file.path(RE,"plot_H3K27acTBX2.png"), plot = tbx2ac, width = 8, height = 6)
+# ggsave(filename =  file.path(RE,"plot_H3K27acWT.png"), plot = wtac, width = 8, height = 6)
+# ggsave(filename =  file.path(RE,"plot_TBX2.png"), plot = tbx2, width = 8, height = 6)
+```
+
+```{r}
+enrichment_H3K4me3Gain.df$transcription_factor = gsub(":.*","", enrichment_H3K4me3Gain.df$category)
+enrichment_H3K4me3Loss.df$transcription_factor = gsub(":.*","", enrichment_H3K4me3Loss.df$category)
+enrichment_H3K27acGain.df$transcription_factor = gsub(":.*","", enrichment_H3K27acGain.df$category)
+enrichment_H3K27acLoss.df$transcription_factor = gsub(":.*","", enrichment_H3K27acLoss.df$category)
+enrichment_TBX2.df$transcription_factor = gsub(":.*","", enrichment_TBX2.df$category)
+
+# enrichment.df$transcription_factor = gsub(":.*","", enrichment.df$category)
+
+ggplot(enrichment_H3K4me3Gain.df[1:20,], aes(x=mapped.peaks.ratio, y=transcription_factor, colour=q.significance, size=nb.overlaps)) +
+plot(enrichment_TBX2.df[1:20,], aes(x=mapped.peaks.ratio, y=transcription_factor, colour=q.significance, size=nb.overlaps)) +
+  geom_point() +
+  theme_bw() +
+  scale_colour_distiller(palette="RdBu") +
+  ggtitle("Significance Gain TBX2 Me3 Overexpression, Top 20 Categories")
+
+ggplot(enrichment_H3K4me3Loss.df[1:20,], aes(x=mapped.peaks.ratio, y=transcription_factor, colour=q.significance, size=nb.overlaps)) +
+plot(enrichment_TBX2.df[1:20,], aes(x=mapped.peaks.ratio, y=transcription_factor, colour=q.significance, size=nb.overlaps)) +
+  geom_point() +
+  theme_bw() +
+  scale_colour_distiller(palette="RdBu") +
+  ggtitle("Significance Loss TBX2 Me3 Overexpression, Top 20 Categories")
+
+ggplot(enrichment_H3K27acGain.df[1:20,], aes(x=mapped.peaks.ratio, y=transcription_factor, colour=q.significance, size=nb.overlaps)) +
+plot(enrichment_TBX2.df[1:20,], aes(x=mapped.peaks.ratio, y=transcription_factor, colour=q.significance, size=nb.overlaps)) +
+  geom_point() +
+  theme_bw() +
+  scale_colour_distiller(palette="RdBu") +
+  ggtitle("Significance Gain TBX2 AC Overexpression, Top 20 Categories")
+
+ggplot(enrichment_H3K27acLoss.df[1:20,], aes(x=mapped.peaks.ratio, y=transcription_factor, colour=q.significance, size=nb.overlaps)) +
+  geom_point() +
+  theme_bw() + 
+  scale_colour_distiller(palette="RdBu") +
+  ggtitle("Significance Gain TBX2 AC Overexpression, Top 20 Categories")
+
+ggplot(enrichment_TBX2.df[1:20,], aes(x=mapped.peaks.ratio, y=transcription_factor, colour=q.significance, size=nb.overlaps)) +
+  geom_point() +
+  theme_bw() +
+  scale_colour_distiller(palette="RdBu") +
+  ggtitle("Significance TBX2 Overexpression, Top 20 Categories")
+```
+

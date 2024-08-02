@@ -1,0 +1,42 @@
+#!/bin/bash
+#SBATCH --mail-user=winn.martinluther@gmail.com
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --job-name=BB_CONV
+#SBATCH --partition=cpu-long
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=18
+#SBATCH --time=04:00:00
+#SBATCH --mem=128G
+#SBATCH --output /mforge/research/labs/experpath/maia/m315695/logs/%x.stdout
+#SBATCH --error /mforge/research/labs/experpath/maia/m315695/logs/%x.stderr
+
+masdir=/mforge/research/labs/experpath/maia
+
+
+# list all files that have .relax.bed
+#remove .bed extension
+#removes takes only first 3 collumsn and make a new file called temp
+#converts the file to bigbed
+# ls -1v ${masdir}/m315695/CUTandRUN/BATCH4_AMY_BB/*.bed | cut -f1 -d"." | xargs -I{} -P 18 sh -c "cut -f1,2,3 --output-delimiter='\t'  {}.bed > temp.bed; bedToBigBed temp.bed ${CHROMSIZES} ${outdir}/{}.bb"
+
+ ls -1v ${masdir}/m315695/CUTandRUN/AVG_AMY/*.relaxed.bed | cut -f1 -d"." |  parallel -j 18 '
+    CHROMSIZES=/mforge/research/labs/experpath/maia/m237371/public_data/mm10.chrom.sizes
+    base_name="{}"
+    input_file="${base_name}.relaxed.bed"
+    temp_file="${base_name}_temp.relaxed.bed"
+    output_file="${base_name}.bb"
+
+    echo "Processing file: $input_file"
+    echo "Cutting columns and writing to $temp_file"
+    cut -f1,2,3 --output-delimiter="   " "$input_file" > "$temp_file"
+
+    echo "bedToBigBed command: bedToBigBed \"$temp_file\" \"$CHROMSIZES\" \"$output_file\""
+    
+    echo "Converting $temp_file to BigBed format"
+    bedToBigBed "$temp_file" "$CHROMSIZES" "$output_file" 
+
+    echo "Removing temp file: $temp_file"
+    rm -f $temp_file
+'
+
