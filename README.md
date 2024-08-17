@@ -1,6 +1,6 @@
 # TBX2-project
 
-##UNIX
+#UNIX
 The first steps with CUT and Run is trimming and FASTQ paired files.
 
 The Amik.slurm script has the capability to conduct trimming on all pairs in parralel.
@@ -15,5 +15,5 @@ The bed file converts bed files into BigBed for ease of use on University of San
 
 Bed2Bam is a script that reverse the changes and converts bed files to bam files. This is useful if you want to use averaged bam files inside of the amik2.slurm script.
 
-##RStudio
+#RStudio
 
