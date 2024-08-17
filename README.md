@@ -17,3 +17,14 @@ Bed2Bam is a script that reverse the changes and converts bed files to bam files
 
 #RStudio
 
+The Diff_Bind_CSV.Rmd is used to create a differential binding affinity analysis to get the differential enriched or depleted sites of the specified DNA binding protein.
+
+The SCCcrosscompare.Rmd is an unused script that has not been tested beacause the package system wasn't calibrated. The function is to create an upset plot that shows intersections between groups.
+
+The remmap enrich.Rmd is used to plot the significant binding sites of the depletion and enrichment to a catalog genome to see regions of significant intersections.
+
+
+Contact
+email: eleuthexius@gmail.com
+
+
