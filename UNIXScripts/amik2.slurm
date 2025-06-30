@@ -23,20 +23,25 @@ OUTDIR=${MASDIR}/m315695/CUTandRUN/AVG_AMY
 mkdir -p "$OUTDIR"
 
 name="AMY*.bg"
+# find bg files that start with name and end with bg
 bg_files=$(find "${MASDIR}/${Bat4}" -type f -name "${name}" -exec basename {} \;)
+#print all the files and sort based on A as delimiter and then numerically
 sort=($(printf "%s\n" "${bg_files[@]}" | sort -tA -k2n))
 
 names=("AMY22*.bg" "AMY18*.bg")
 igG_files=()
 
-#issue getting the file
+#issue getting the files (6/30/2025 might have fixed but not updated)
+# for all the files with matching names then assign to igG_files and remove basename
 for i in "${names[@]}"; do
     found_file=$(find "${MASDIR}/${Bat2IgG}" -type f -name "$i" -exec basename {} \;)
+    #if not empty 
     if [ -n "$found_file" ]; then
         igG_files+=("$found_file")
     fi
 done
 
+#sorts replicates
 for ((i=0; i<$((${#sort[@]}/3)); i++ ))
 do 
     j=$(($i+6))
