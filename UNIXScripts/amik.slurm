@@ -14,6 +14,7 @@
 . ~/.bash_profile
 module restore
 
+#makes directories
 MASDIR=/mforge/research/labs/experpath/maia
 
 PICARD=/usr/local/biotools/picard/2.27.5/picard.jar
@@ -25,7 +26,7 @@ OUTDIR=${MASDIR}/m315695/CUTandRUN/trimmed_batch2
 
 # mkdir -p "$OUTDIR"
 
-
+#nummber of samples in this case just sam 22
 SeqId=(22)
 name="AMY"
 Pair1=*_L1_R1_*.fastq.gz
@@ -58,7 +59,7 @@ awkx_file=$(mktemp)
 bedt_file=$(mktemp)
 bedg_file=$(mktemp)
 
-
+#deletes all the temporary files
 truncate -s 0 "trim_file"
 truncate -s 0 "bow_file"
 truncate -s 0 "sam_file"
@@ -77,6 +78,9 @@ truncate -s 0 "bedbb_file"
 truncate -s 0 "awkx_file"
 truncate -s 0 "bedt_file"
 truncate -s 0 "bedg_file"
+
+
+# echos all the commands into temporary files
 
 wait
 for i in ${!SeqId[@]}
